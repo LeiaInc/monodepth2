@@ -150,7 +150,7 @@ class MonodepthOptions:
                                  nargs="+",
                                  type=str,
                                  help="models to load",
-                                 default=["encoder", "depth", "pose_encoder", "pose"])
+                                 default=["encoder", "depth"])
 
         # LOGGING options
         self.parser.add_argument("--log_frequency",
