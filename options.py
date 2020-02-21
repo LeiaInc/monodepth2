@@ -20,7 +20,7 @@ class MonodepthOptions:
         self.parser.add_argument("--data_path",
                                  type=str,
                                  help="path to the training data",
-                                 default=os.path.join(file_dir, "kitti_data"))
+                                 default="/home/owenhua/dataset/Leia-Holopix-Stereo-Dataset")
         self.parser.add_argument("--log_dir",
                                  type=str,
                                  help="log directory",
@@ -35,7 +35,7 @@ class MonodepthOptions:
                                  type=str,
                                  help="which training split to use",
                                  choices=["eigen_zhou", "eigen_full", "odom", "benchmark"],
-                                 default="eigen_zhou")
+                                 default="holopix")
         self.parser.add_argument("--num_layers",
                                  type=int,
                                  help="number of resnet layers",
@@ -44,7 +44,7 @@ class MonodepthOptions:
         self.parser.add_argument("--dataset",
                                  type=str,
                                  help="dataset to train on",
-                                 default="kitti",
+                                 default="holopix",
                                  choices=["kitti", "kitti_odom", "kitti_depth", "kitti_test"])
         self.parser.add_argument("--png",
                                  help="if set, trains from raw KITTI png files (instead of jpgs)",
@@ -52,7 +52,7 @@ class MonodepthOptions:
         self.parser.add_argument("--height",
                                  type=int,
                                  help="input image height",
-                                 default=192)
+                                 default=352)
         self.parser.add_argument("--width",
                                  type=int,
                                  help="input image width",
@@ -181,7 +181,7 @@ class MonodepthOptions:
                                  help="optional path to a .npy disparities file to evaluate")
         self.parser.add_argument("--eval_split",
                                  type=str,
-                                 default="eigen",
+                                 default="holopix",
                                  choices=[
                                     "eigen", "eigen_benchmark", "benchmark", "odom_9", "odom_10"],
                                  help="which split to run eval on")

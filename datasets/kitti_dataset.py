@@ -42,6 +42,16 @@ class KITTIDataset(MonoDataset):
         return os.path.isfile(velo_filename)
 
     def get_color(self, folder, frame_index, side, do_flip):
+        """return color image tensor
+        
+        Arguments:
+            folder {str} -- The name of the image directory
+            frame_index {str} -- for stereo, ['0', 's']
+            side {[type]} -- [description]
+        
+        Returns:
+            [type] -- [description]
+        """
         color = self.loader(self.get_image_path(folder, frame_index, side))
 
         if do_flip:

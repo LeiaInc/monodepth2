@@ -3,6 +3,7 @@
 # This software is licensed under the terms of the Monodepth2 licence
 # which allows for non-commercial use only, the full terms of which are made
 # available in the LICENSE file.
+# This script is modified to work with holopix dataset and it will no longer work with Kitti
 
 from __future__ import absolute_import, division, print_function
 
@@ -30,7 +31,7 @@ class MonoDataset(data.Dataset):
 
     Args:
         data_path
-        filenames
+        img_ids
         height
         width
         frame_idxs
@@ -40,7 +41,7 @@ class MonoDataset(data.Dataset):
     """
     def __init__(self,
                  data_path,
-                 filenames,
+                 img_ids,
                  height,
                  width,
                  frame_idxs,
@@ -50,7 +51,7 @@ class MonoDataset(data.Dataset):
         super(MonoDataset, self).__init__()
 
         self.data_path = data_path
-        self.filenames = filenames
+        self.img_ids = img_ids
         self.height = height
         self.width = width
         self.num_scales = num_scales
@@ -94,12 +95,15 @@ class MonoDataset(data.Dataset):
         images in this item. This ensures that all images input to the pose network receive the
         same augmentation.
         """
+        # The model requires integer multiples of 32
+        center_crop = transforms.CenterCrop((352, 640))
         for k in list(inputs):
             frame = inputs[k]
             if "color" in k:
                 n, im, i = k
                 for i in range(self.num_scales):
-                    inputs[(n, im, i)] = self.resize[i](inputs[(n, im, i - 1)])
+                    inputs[(n, im, i)] = center_crop(inputs[(n, im, i - 1)])
+                    inputs[(n, im, i)] = self.resize[i](inputs[(n, im, i)])
 
         for k in list(inputs):
             f = inputs[k]
@@ -109,7 +113,7 @@ class MonoDataset(data.Dataset):
                 inputs[(n + "_aug", im, i)] = self.to_tensor(color_aug(f))
 
     def __len__(self):
-        return len(self.filenames)
+        return len(self.img_ids)
 
     def __getitem__(self, index):
         """Returns a single training item from the dataset as a dictionary.
@@ -140,37 +144,31 @@ class MonoDataset(data.Dataset):
         do_color_aug = self.is_train and random.random() > 0.5
         do_flip = self.is_train and random.random() > 0.5
 
-        line = self.filenames[index].split()
-        folder = line[0]
-
-        if len(line) == 3:
-            frame_index = int(line[1])
-        else:
-            frame_index = 0
-
-        if len(line) == 3:
-            side = line[2]
-        else:
-            side = None
-
+        img_id = self.img_ids[index]
         for i in self.frame_idxs:
             if i == "s":
-                other_side = {"r": "l", "l": "r"}[side]
-                inputs[("color", i, -1)] = self.get_color(folder, frame_index, other_side, do_flip)
+                # Load the right image
+                folder = os.path.join(self.data_path, 'right')
+                img_name = img_id + '_right.jpg'
+                inputs[("color", i, -1)] = self.get_color(folder, img_name, do_flip)
             else:
-                inputs[("color", i, -1)] = self.get_color(folder, frame_index + i, side, do_flip)
+                # Load the left image
+                folder = os.path.join(self.data_path, 'left')
+                img_name = img_id + '_left.jpg'
+                inputs[("color", i, -1)] = self.get_color(folder, img_name, do_flip)
 
-        # adjusting intrinsics to match each scale in the pyramid
-        for scale in range(self.num_scales):
-            K = self.K.copy()
+        # We do not need K for Holopix Dataset
+        # # adjusting intrinsics to match each scale in the pyramid
+        # for scale in range(self.num_scales):
+        #     K = self.K.copy()
 
-            K[0, :] *= self.width // (2 ** scale)
-            K[1, :] *= self.height // (2 ** scale)
+        #     K[0, :] *= self.width // (2 ** scale)
+        #     K[1, :] *= self.height // (2 ** scale)
 
-            inv_K = np.linalg.pinv(K)
+        #     inv_K = np.linalg.pinv(K)
 
-            inputs[("K", scale)] = torch.from_numpy(K)
-            inputs[("inv_K", scale)] = torch.from_numpy(inv_K)
+        #     inputs[("K", scale)] = torch.from_numpy(K)
+        #     inputs[("inv_K", scale)] = torch.from_numpy(inv_K)
 
         if do_color_aug:
             color_aug = transforms.ColorJitter.get_params(
@@ -189,17 +187,18 @@ class MonoDataset(data.Dataset):
             inputs["depth_gt"] = np.expand_dims(depth_gt, 0)
             inputs["depth_gt"] = torch.from_numpy(inputs["depth_gt"].astype(np.float32))
 
-        if "s" in self.frame_idxs:
-            stereo_T = np.eye(4, dtype=np.float32)
-            baseline_sign = -1 if do_flip else 1
-            side_sign = -1 if side == "l" else 1
-            stereo_T[0, 3] = side_sign * baseline_sign * 0.1
+        # We do not need T for Holopix Dataset
+        # if "s" in self.frame_idxs:
+        #     stereo_T = np.eye(4, dtype=np.float32)
+        #     baseline_sign = -1 if do_flip else 1
+        #     side_sign = -1 if side == "l" else 1
+        #     stereo_T[0, 3] = side_sign * baseline_sign * 0.1
 
-            inputs["stereo_T"] = torch.from_numpy(stereo_T)
+        #     inputs["stereo_T"] = torch.from_numpy(stereo_T)
 
         return inputs
 
-    def get_color(self, folder, frame_index, side, do_flip):
+    def get_color(self, folder, img_name, do_flip):
         raise NotImplementedError
 
     def check_depth(self):

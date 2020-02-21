@@ -23,7 +23,6 @@ from layers import *
 
 import datasets
 import networks
-from IPython import embed
 
 
 class Trainer:
@@ -111,27 +110,27 @@ class Trainer:
         print("Training is using:\n  ", self.device)
 
         # data
-        datasets_dict = {"kitti": datasets.KITTIRAWDataset,
-                         "kitti_odom": datasets.KITTIOdomDataset}
+        datasets_dict = {"holopix": datasets.HolopixDataset}
         self.dataset = datasets_dict[self.opt.dataset]
 
-        fpath = os.path.join(os.path.dirname(__file__), "splits", self.opt.split, "{}_files.txt")
+        fpath = os.path.join("/home/owenhua/dataset/Leia-Holopix-Stereo-Dataset", "holopix70k_positive_{}_id.txt")
 
-        train_filenames = readlines(fpath.format("train"))
-        val_filenames = readlines(fpath.format("val"))
+        train_ids = readlines(fpath.format("train"))
+        val_ids = readlines(fpath.format("val"))
         img_ext = '.png' if self.opt.png else '.jpg'
 
-        num_train_samples = len(train_filenames)
+        num_train_samples = len(train_ids)
+        assert num_train_samples > 0
         self.num_total_steps = num_train_samples // self.opt.batch_size * self.opt.num_epochs
 
         train_dataset = self.dataset(
-            self.opt.data_path, train_filenames, self.opt.height, self.opt.width,
+            self.opt.data_path, train_ids, self.opt.height, self.opt.width,
             self.opt.frame_ids, 4, is_train=True, img_ext=img_ext)
         self.train_loader = DataLoader(
             train_dataset, self.opt.batch_size, True,
             num_workers=self.opt.num_workers, pin_memory=True, drop_last=True)
         val_dataset = self.dataset(
-            self.opt.data_path, val_filenames, self.opt.height, self.opt.width,
+            self.opt.data_path, val_ids, self.opt.height, self.opt.width,
             self.opt.frame_ids, 4, is_train=False, img_ext=img_ext)
         self.val_loader = DataLoader(
             val_dataset, self.opt.batch_size, True,
@@ -199,7 +198,7 @@ class Trainer:
         self.set_train()
 
         for batch_idx, inputs in enumerate(self.train_loader):
-
+            assert False
             before_op_time = time.time()
 
             outputs, losses = self.process_batch(inputs)
@@ -351,9 +350,9 @@ class Trainer:
                     disp, [self.opt.height, self.opt.width], mode="bilinear", align_corners=False)
                 source_scale = 0
 
-            _, depth = disp_to_depth(disp, self.opt.min_depth, self.opt.max_depth)
+            scaled_disparity, depth = disp_to_depth(disp, self.opt.min_depth, self.opt.max_depth)
 
-            outputs[("depth", 0, scale)] = depth
+            outputs[("scaled_disparity", 0, scale)] = scaled_disparity
 
             for i, frame_id in enumerate(self.opt.frame_ids[1:]):
 
