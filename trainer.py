@@ -379,6 +379,10 @@ class Trainer:
 
                 # outputs[("sample", frame_id, scale)] = pix_coords
 
+                disparity = torch.zeros([self.opt.batch_size, self.opt.height, self.opt.width, 1])
+                scaled_disparity = scaled_disparity.permute(0,2,3,1)
+                scaled_disparity = torch.cat((disparity, scaled_disparity), 3)
+
                 outputs[("color", frame_id, scale)] = F.grid_sample(
                     inputs[("color", frame_id, source_scale)],
                     scaled_disparity,
