@@ -379,7 +379,7 @@ class Trainer:
 
                 # outputs[("sample", frame_id, scale)] = pix_coords
 
-                disparity = torch.zeros([self.opt.batch_size, self.opt.height, self.opt.width, 1])
+                disparity = torch.zeros([self.opt.batch_size, self.opt.height, self.opt.width, 1]).cuda()
                 scaled_disparity = scaled_disparity.permute(0,2,3,1)
                 scaled_disparity = torch.cat((disparity, scaled_disparity), 3)
 
