@@ -336,6 +336,26 @@ class Trainer:
 
         self.set_train()
 
+    def get_batch_pixel_coords(self, h, w, b):
+        """
+        Get batch sampling pixel coordinates in a meshgrid
+        :param h: height
+        :param w: width
+        :param b: batch size
+        :return: sampling meshgrid
+        """
+        # Create a mesh grid for both x,y from [-1,1] with step size of h and w.
+        # [1, H, W]  copy 0-height for w times : y coord
+        y_range = torch.autograd.Variable(torch.linspace(-1.0,1.0,h).view(1,h,1).expand(1,h,w),requires_grad=False)
+        # [1, H, W]  copy 0-width for h times  : x coord
+        x_range = torch.autograd.Variable(torch.linspace(-1.0,1.0,w).view(1,1,w).expand(1,h,w),requires_grad=False)
+
+        pixel_coords = torch.stack(
+            (x_range, y_range), dim=1).float()  # [1, 2, H, W]
+        batch_pixel_coords = pixel_coords[:, :, :, :].expand(
+            b, 2, h, w).contiguous().view(b, 2, -1)
+        return batch_pixel_coords
+
     def generate_images_pred(self, inputs, outputs):
         """Generate the warped (reprojected) color images for a minibatch.
         Generated images are saved into the `outputs` dictionary.
@@ -379,13 +399,19 @@ class Trainer:
 
                 # outputs[("sample", frame_id, scale)] = pix_coords
 
-                disparity = torch.zeros([self.opt.batch_size, self.opt.height, self.opt.width, 1])
-                scaled_disparity = scaled_disparity.permute(0,2,3,1)
-                scaled_disparity = torch.cat((disparity, scaled_disparity), 3)
+                batch_pixel_coords = self.get_batch_pixel_coords(self.opt.height, self.opt.width, self.opt.batch_size)
+
+                # apply disparity on a per pixel basis only on the X - axis
+                # since there is no vertical disparity
+                X = batch_pixel_coords[:, 0, :] + scaled_disparity.flatten() * 0.1
+                Y = batch_pixel_coords[:, 1, :]
+
+                pixel_coords = torch.stack([X, Y], dim=2)  # [B, H*W, 2]
+                pixel_coords = pixel_coords.view(self.opt.batch_size, self.opt.height, self.opt.width, 2)  # [B, H, W, 2]
 
                 outputs[("color", frame_id, scale)] = F.grid_sample(
                     inputs[("color", frame_id, source_scale)],
-                    scaled_disparity,
+                    pixel_coords,
                     padding_mode="border")
 
                 if not self.opt.disable_automasking:
