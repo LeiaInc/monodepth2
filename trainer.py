@@ -198,7 +198,6 @@ class Trainer:
         self.set_train()
 
         for batch_idx, inputs in enumerate(self.train_loader):
-            assert False
             before_op_time = time.time()
 
             outputs, losses = self.process_batch(inputs)
@@ -356,27 +355,27 @@ class Trainer:
 
             for i, frame_id in enumerate(self.opt.frame_ids[1:]):
 
-                if frame_id == "s":
-                    T = inputs["stereo_T"]
-                else:
-                    T = outputs[("cam_T_cam", 0, frame_id)]
+                # if frame_id == "s":
+                #     T = inputs["stereo_T"]
+                # else:
+                #     T = outputs[("cam_T_cam", 0, frame_id)]
 
                 # from the authors of https://arxiv.org/abs/1712.00175
-                if self.opt.pose_model_type == "posecnn":
+                # if self.opt.pose_model_type == "posecnn":
 
-                    axisangle = outputs[("axisangle", 0, frame_id)]
-                    translation = outputs[("translation", 0, frame_id)]
+                #     axisangle = outputs[("axisangle", 0, frame_id)]
+                #     translation = outputs[("translation", 0, frame_id)]
 
-                    inv_depth = 1 / depth
-                    mean_inv_depth = inv_depth.mean(3, True).mean(2, True)
+                #     inv_depth = 1 / depth
+                #     mean_inv_depth = inv_depth.mean(3, True).mean(2, True)
 
-                    T = transformation_from_parameters(
-                        axisangle[:, 0], translation[:, 0] * mean_inv_depth[:, 0], frame_id < 0)
+                #     T = transformation_from_parameters(
+                #         axisangle[:, 0], translation[:, 0] * mean_inv_depth[:, 0], frame_id < 0)
 
-                cam_points = self.backproject_depth[source_scale](
-                    depth, inputs[("inv_K", source_scale)])
-                pix_coords = self.project_3d[source_scale](
-                    cam_points, inputs[("K", source_scale)], T)
+                # cam_points = self.backproject_depth[source_scale](
+                #     depth, inputs[("inv_K", source_scale)])
+                # pix_coords = self.project_3d[source_scale](
+                #     cam_points, inputs[("K", source_scale)], T)
 
                 outputs[("sample", frame_id, scale)] = pix_coords
 
