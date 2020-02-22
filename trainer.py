@@ -115,8 +115,8 @@ class Trainer:
 
         fpath = os.path.join("/home/owenhua/dataset/Leia-Holopix-Stereo-Dataset", "holopix70k_positive_{}_id.txt")
 
-        train_ids = readlines(fpath.format("train"))
-        val_ids = readlines(fpath.format("val"))
+        train_ids = readlines(fpath.format("train"))[:1000]
+        val_ids = readlines(fpath.format("val"))[:100]
         img_ext = '.png' if self.opt.png else '.jpg'
 
         num_train_samples = len(train_ids)
@@ -166,6 +166,9 @@ class Trainer:
 
         self.save_opts()
 
+        # Tensorboard
+        self.train_metric_logger = MetricLogger(self.opt.log_dir)
+
     def set_train(self):
         """Convert all models to training mode
         """
@@ -202,6 +205,11 @@ class Trainer:
 
             outputs, losses = self.process_batch(inputs)
 
+            disp = outputs[("scaled_disparity", 0, 0)]
+            img = tensor_to_image(disp)
+            # train_metric_logger.add_image(self.epoch, str(batch_idx), cv2.cvtColor(
+            #         np.array(new_im), cv2.COLOR_BGR2RGB))
+
             self.model_optimizer.zero_grad()
             losses["loss"].backward()
             self.model_optimizer.step()
@@ -209,8 +217,8 @@ class Trainer:
             duration = time.time() - before_op_time
 
             # log less frequently after the first 2000 steps to save time & disk space
-            early_phase = batch_idx % self.opt.log_frequency == 0 and self.step < 2000
-            late_phase = self.step % 2000 == 0
+            # early_phase = batch_idx % self.opt.log_frequency == 0 and self.step < 2000
+            late_phase = self.step % 100 == 0
 
             if early_phase or late_phase:
                 self.log_time(batch_idx, duration, losses["loss"].cpu().data)
@@ -336,6 +344,26 @@ class Trainer:
 
         self.set_train()
 
+    def get_batch_pixel_coords(self, h, w, b):
+        """
+        Get batch sampling pixel coordinates in a meshgrid
+        :param h: height
+        :param w: width
+        :param b: batch size
+        :return: sampling meshgrid
+        """
+        # Create a mesh grid for both x,y from [-1,1] with step size of h and w.
+        # [1, H, W]  copy 0-height for w times : y coord
+        y_range = torch.autograd.Variable(torch.linspace(-1.0,1.0,h).view(1,h,1).expand(1,h,w),requires_grad=False)
+        # [1, H, W]  copy 0-width for h times  : x coord
+        x_range = torch.autograd.Variable(torch.linspace(-1.0,1.0,w).view(1,1,w).expand(1,h,w),requires_grad=False)
+
+        pixel_coords = torch.stack(
+            (x_range, y_range), dim=1).float()  # [1, 2, H, W]
+        batch_pixel_coords = pixel_coords[:, :, :, :].expand(
+            b, 2, h, w).contiguous().view(b, 2, -1)
+        return batch_pixel_coords
+
     def generate_images_pred(self, inputs, outputs):
         """Generate the warped (reprojected) color images for a minibatch.
         Generated images are saved into the `outputs` dictionary.
@@ -379,13 +407,19 @@ class Trainer:
 
                 # outputs[("sample", frame_id, scale)] = pix_coords
 
-                disparity = torch.zeros([self.opt.batch_size, self.opt.height, self.opt.width, 1]).cuda()
-                scaled_disparity = scaled_disparity.permute(0,2,3,1)
-                scaled_disparity = torch.cat((disparity, scaled_disparity), 3)
+                batch_pixel_coords = self.get_batch_pixel_coords(self.opt.height, self.opt.width, self.opt.batch_size).cuda()
+
+                # apply disparity on a per pixel basis only on the X - axis
+                # since there is no vertical disparity
+                X = batch_pixel_coords[:, 0, :] + scaled_disparity.flatten(start_dim=1) * 0.1
+                Y = batch_pixel_coords[:, 1, :]
+
+                pixel_coords = torch.stack([X, Y], dim=2)  # [B, H*W, 2]
+                pixel_coords = pixel_coords.view(self.opt.batch_size, self.opt.height, self.opt.width, 2)  # [B, H, W, 2]
 
                 outputs[("color", frame_id, scale)] = F.grid_sample(
                     inputs[("color", frame_id, source_scale)],
-                    scaled_disparity,
+                    pixel_coords,
                     padding_mode="border")
 
                 if not self.opt.disable_automasking:
@@ -559,7 +593,7 @@ class Trainer:
 
                 writer.add_image(
                     "disp_{}/{}".format(s, j),
-                    normalize_image(outputs[("disp", s)][j]), self.step)
+                    normalize_image(outputs[("scaled_disparity", s)][j]), self.step)
 
                 if self.opt.predictive_mask:
                     for f_idx, frame_id in enumerate(self.opt.frame_ids[1:]):

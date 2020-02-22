@@ -40,7 +40,9 @@ def parse_args():
                             "mono+stereo_no_pt_640x192",
                             "mono_1024x320",
                             "stereo_1024x320",
-                            "mono+stereo_1024x320"])
+                            "mono+stereo_1024x320",
+                            "stereo_640x192_original",
+                            "stereo_640x192_new"])
     parser.add_argument('--ext', type=str,
                         help='image extension to search for in folder', default="jpg")
     parser.add_argument("--no_cuda",
@@ -124,6 +126,9 @@ def test_simple(args):
             outputs = depth_decoder(features)
 
             disp = outputs[("disp", 0)]
+            image_numpy = disp[0].cpu().float().numpy()
+            image_numpy = np.transpose(image_numpy, (1, 2, 0))
+            print(np.amax(image_numpy), np.amin(image_numpy))
             disp_resized = torch.nn.functional.interpolate(
                 disp, (original_height, original_width), mode="bilinear", align_corners=False)
 

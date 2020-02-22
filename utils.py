@@ -22,10 +22,15 @@ def readlines(filename):
 def normalize_image(x):
     """Rescale image pixels to span range [0, 1]
     """
-    ma = float(x.max().cpu().data)
-    mi = float(x.min().cpu().data)
-    d = ma - mi if ma != mi else 1e5
-    return (x - mi) / d
+    # ma = float(x.max().cpu().data)
+    # mi = float(x.min().cpu().data)
+    # d = ma - mi if ma != mi else 1e5
+    # return (x - mi) / d
+    image_numpy = np.transpose(x, (1, 2, 0))
+    image_numpy = (image_numpy + 1) / 2.0 * 255.0
+
+    return image_numpy
+
 
 
 def sec_to_hm(t):
@@ -112,3 +117,42 @@ def download_model_if_doesnt_exist(model_name):
             f.extractall(model_path)
 
         print("   Model unzipped to {}".format(model_path))
+
+def tensor_to_image(image_tensor):
+    image_numpy = image_tensor[0].detach().float().numpy()
+    image_numpy = np.transpose(image_numpy, (1, 2, 0))
+    image_numpy = (image_numpy + 1) / 2.0 * 255.0
+
+    return 
+
+
+import tensorboardX
+
+
+class MetricLogger:
+    """
+    Utility class to log metrics to both Tensorboard and Paperspace's web UI.
+    """
+
+    def __init__(self, log_dir):
+        self.tensorboard = tensorboardX.SummaryWriter(logdir=log_dir)
+        self.logged_scalars = set()
+
+    def add_scalar(self, epoch, name, value):
+        self.tensorboard.add_scalar(name, value, epoch)
+
+        # The first time we log a particular metric, print this to instantiate
+        # the graph (for Paperspace UI).
+        if name not in self.logged_scalars:
+            print('{"chart": "%s", "axis": "epochs"}' % name)
+            self.logged_scalars.add(name)
+
+        # Log to Paperspace UI.
+        print('{"chart": "%s", "x": %d, "y": %.04f}' % (name, epoch, value))
+
+    def add_image(self, epoch, name, im):
+        im = cv2.cvtColor(im, cv2.COLOR_RGB2BGR)
+        self.tensorboard.add_image(name, im, epoch, dataformats='HWC')
+
+    def add_graph(self, model, data_feed=None):
+        self.tensorboard.add_graph(model, input_to_model=data_feed)
