@@ -16,6 +16,8 @@ from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
 
 import json
+import cv2
+import shutil
 
 from utils import *
 from kitti_utils import *
@@ -23,12 +25,16 @@ from layers import *
 
 import datasets
 import networks
+import random
 
 
 class Trainer:
     def __init__(self, options):
         self.opt = options
         self.log_path = os.path.join(self.opt.log_dir, self.opt.model_name)
+        if os.path.exists(self.log_path):
+            shutil.rmtree(self.log_path)
+        os.makedirs(self.log_path)
 
         # checking height and width are multiples of 32
         assert self.opt.height % 32 == 0, "'height' must be a multiple of 32"
@@ -115,8 +121,8 @@ class Trainer:
 
         fpath = os.path.join("/home/owenhua/dataset/Leia-Holopix-Stereo-Dataset", "holopix70k_positive_{}_id.txt")
 
-        train_ids = readlines(fpath.format("train"))[:1000]
-        val_ids = readlines(fpath.format("val"))[:100]
+        train_ids = readlines(fpath.format("train"))
+        val_ids = readlines(fpath.format("val"))[:500]
         img_ext = '.png' if self.opt.png else '.jpg'
 
         num_train_samples = len(train_ids)
@@ -196,8 +202,6 @@ class Trainer:
         """Run a single epoch of training and validation
         """
         self.model_lr_scheduler.step()
-
-        print("Training")
         self.set_train()
 
         for batch_idx, inputs in enumerate(self.train_loader):
@@ -205,8 +209,8 @@ class Trainer:
 
             outputs, losses = self.process_batch(inputs)
 
-            disp = outputs[("scaled_disparity", 0, 0)]
-            img = tensor_to_image(disp)
+            # disp = outputs[("scaled_disparity", 0, 0)]
+            # img = tensor_to_image(disp)
             # train_metric_logger.add_image(self.epoch, str(batch_idx), cv2.cvtColor(
             #         np.array(new_im), cv2.COLOR_BGR2RGB))
 
@@ -217,10 +221,11 @@ class Trainer:
             duration = time.time() - before_op_time
 
             # log less frequently after the first 2000 steps to save time & disk space
-            # early_phase = batch_idx % self.opt.log_frequency == 0 and self.step < 2000
-            late_phase = self.step % 100 == 0
+            early_phase = batch_idx % self.opt.log_frequency == 0 and self.step < 2000
+            late_phase = self.step % 2000 == 0
 
             if early_phase or late_phase:
+                print("Writing to tensorboard")
                 self.log_time(batch_idx, duration, losses["loss"].cpu().data)
 
                 if "depth_gt" in inputs:
@@ -369,7 +374,25 @@ class Trainer:
         Generated images are saved into the `outputs` dictionary.
         """
         for scale in self.opt.scales:
+            # # Retrieve left images
+            # left = inputs["color", 0, scale]
+            # left_numpy_list = tensor_to_image(left)
+            # for i, left_numpy in enumerate(left_numpy_list):
+            #     cv2.imwrite("./outputs/left/%s_left.jpg"%i, left_numpy)
+
+            # # Retrieve right images
+            # right = inputs["color", 's', scale]
+            # right_numpy_list = tensor_to_image(right)
+            # for i, right_numpy in enumerate(right_numpy_list):
+            #     cv2.imwrite("./outputs/right/%s_right.jpg"%i, right_numpy)
+
             disp = outputs[("disp", scale)]
+
+            # # Retrieve disp images
+            # disp_numpy_list = tensor_to_image(disp)
+            # for i, disp_numpy in enumerate(disp_numpy_list):
+            #     cv2.imwrite("./outputs/disp/%s_disp.jpg"%i, disp_numpy)
+
             if self.opt.v1_multiscale:
                 source_scale = scale
             else:
@@ -379,7 +402,13 @@ class Trainer:
 
             scaled_disparity, depth = disp_to_depth(disp, self.opt.min_depth, self.opt.max_depth)
 
-            outputs[("scaled_disparity", 0, scale)] = scaled_disparity
+            # # Retrieve scaled_disparity
+            # for i in range(scaled_disparity.size()[0]):
+            #     sd_numpy = scaled_disparity[i].cpu().detach().float().numpy()
+            #     sd_numpy = np.transpose(sd_numpy, (1, 2, 0))
+            #     np.save("./outputs/sd/%s_sd.npy"%i, sd_numpy)
+
+            # outputs[("scaled_disparity", 0, scale)] = scaled_disparity
 
             for i, frame_id in enumerate(self.opt.frame_ids[1:]):
 
@@ -409,6 +438,7 @@ class Trainer:
 
                 batch_pixel_coords = self.get_batch_pixel_coords(self.opt.height, self.opt.width, self.opt.batch_size).cuda()
 
+
                 # apply disparity on a per pixel basis only on the X - axis
                 # since there is no vertical disparity
                 X = batch_pixel_coords[:, 0, :] + scaled_disparity.flatten(start_dim=1) * 0.1
@@ -421,6 +451,15 @@ class Trainer:
                     inputs[("color", frame_id, source_scale)],
                     pixel_coords,
                     padding_mode="border")
+
+                # # Retrieve pred images
+                # pred = outputs[("color", frame_id, scale)]
+                # pred_numpy_list = tensor_to_image(pred)
+                # for i, pred_numpy in enumerate(pred_numpy_list):
+                #     cv2.imwrite("./outputs/pred/%s_pred.jpg"%i, pred_numpy)
+
+                # assert False
+                
 
                 if not self.opt.disable_automasking:
                     outputs[("color_identity", frame_id, scale)] = \
@@ -593,7 +632,7 @@ class Trainer:
 
                 writer.add_image(
                     "disp_{}/{}".format(s, j),
-                    normalize_image(outputs[("scaled_disparity", s)][j]), self.step)
+                    normalize_image(outputs[("disp", s)][j]), self.step)
 
                 if self.opt.predictive_mask:
                     for f_idx, frame_id in enumerate(self.opt.frame_ids[1:]):

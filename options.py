@@ -60,7 +60,7 @@ class MonodepthOptions:
         self.parser.add_argument("--disparity_smoothness",
                                  type=float,
                                  help="disparity smoothness weight",
-                                 default=1e-3)
+                                 default=1e-2)
         self.parser.add_argument("--scales",
                                  nargs="+",
                                  type=int,

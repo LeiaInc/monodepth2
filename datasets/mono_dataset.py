@@ -143,18 +143,24 @@ class MonoDataset(data.Dataset):
 
         do_color_aug = self.is_train and random.random() > 0.5
         do_flip = self.is_train and random.random() > 0.5
+        # do_color_aug = False
+        # do_flip = False
 
         img_id = self.img_ids[index]
         for i in self.frame_idxs:
+            tag_s = "right"
+            tag_0 = "left"
+            if do_flip:
+                tag_s, tag_0 = tag_0, tag_s
             if i == "s":
                 # Load the right image
-                folder = os.path.join(self.data_path, 'right')
-                img_name = img_id + '_right.jpg'
+                folder = os.path.join(self.data_path, tag_s)
+                img_name = img_id + '_%s.jpg' % tag_s
                 inputs[("color", i, -1)] = self.get_color(folder, img_name, do_flip)
             else:
                 # Load the left image
-                folder = os.path.join(self.data_path, 'left')
-                img_name = img_id + '_left.jpg'
+                folder = os.path.join(self.data_path, tag_0)
+                img_name = img_id + '_%s.jpg'%tag_0
                 inputs[("color", i, -1)] = self.get_color(folder, img_name, do_flip)
 
         # We do not need K for Holopix Dataset

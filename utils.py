@@ -9,6 +9,8 @@ import os
 import hashlib
 import zipfile
 from six.moves import urllib
+import numpy as np
+import cv2
 
 
 def readlines(filename):
@@ -22,15 +24,10 @@ def readlines(filename):
 def normalize_image(x):
     """Rescale image pixels to span range [0, 1]
     """
-    # ma = float(x.max().cpu().data)
-    # mi = float(x.min().cpu().data)
-    # d = ma - mi if ma != mi else 1e5
-    # return (x - mi) / d
-    image_numpy = np.transpose(x, (1, 2, 0))
-    image_numpy = (image_numpy + 1) / 2.0 * 255.0
-
-    return image_numpy
-
+    ma = float(x.max().cpu().data)
+    mi = float(x.min().cpu().data)
+    d = ma - mi if ma != mi else 1e5
+    return (x - mi) / d
 
 
 def sec_to_hm(t):
@@ -119,11 +116,16 @@ def download_model_if_doesnt_exist(model_name):
         print("   Model unzipped to {}".format(model_path))
 
 def tensor_to_image(image_tensor):
-    image_numpy = image_tensor[0].detach().float().numpy()
-    image_numpy = np.transpose(image_numpy, (1, 2, 0))
-    image_numpy = (image_numpy + 1) / 2.0 * 255.0
+    images = []
+    for i in range(image_tensor.size()[0]):
+        image_numpy = image_tensor[i].cpu().detach().float().numpy()
+        image_numpy = np.transpose(image_numpy, (1, 2, 0))
+        # image_numpy = (image_numpy + 1) / 2.0 * 255.0
+        image_numpy *= 255
+        image_numpy = cv2.cvtColor(image_numpy, cv2.COLOR_BGR2RGB)
+        images.append(image_numpy.astype(np.uint8))
 
-    return 
+    return images
 
 
 import tensorboardX

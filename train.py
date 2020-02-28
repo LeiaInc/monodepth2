@@ -13,14 +13,19 @@ from options import MonodepthOptions
 options = MonodepthOptions()
 opts = options.parse()
 
+SEED = 3
+
 import torch
-torch.manual_seed(0)
+torch.manual_seed(SEED)
 
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 import numpy as np
-np.random.seed(0)
+np.random.seed(SEED)
+
+import random
+random.seed(SEED)
 
 if __name__ == "__main__":
     trainer = Trainer(opts)
