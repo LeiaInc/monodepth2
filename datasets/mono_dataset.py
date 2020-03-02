@@ -142,9 +142,9 @@ class MonoDataset(data.Dataset):
         inputs = {}
 
         do_color_aug = self.is_train and random.random() > 0.5
-        do_flip = self.is_train and random.random() > 0.5
+        # do_flip = self.is_train and random.random() > 0.5
         # do_color_aug = False
-        # do_flip = False
+        do_flip = False
 
         img_id = self.img_ids[index]
         for i in self.frame_idxs:

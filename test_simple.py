@@ -36,7 +36,7 @@ if HOLOPIX:
 else:
     model_name = "kitti"
 
-post_fix = "_no_pt_10k"
+post_fix = "_no_flip"
 
 
 def parse_args():
