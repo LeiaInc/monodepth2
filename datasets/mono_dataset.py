@@ -154,11 +154,13 @@ class MonoDataset(data.Dataset):
                 tag_s, tag_0 = tag_0, tag_s
             if i == "s":
                 # Load the right image
+                # folder = os.path.join(self.data_path, "resized-" + tag_s + "-images")
                 folder = os.path.join(self.data_path, tag_s)
                 img_name = img_id + '_%s.jpg' % tag_s
                 inputs[("color", i, -1)] = self.get_color(folder, img_name, do_flip)
             else:
                 # Load the left image
+                # folder = os.path.join(self.data_path, "resized-" + tag_0 + "-images")
                 folder = os.path.join(self.data_path, tag_0)
                 img_name = img_id + '_%s.jpg'%tag_0
                 inputs[("color", i, -1)] = self.get_color(folder, img_name, do_flip)

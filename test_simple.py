@@ -24,7 +24,7 @@ from layers import disp_to_depth
 from utils import download_model_if_doesnt_exist
 
 PAD_INFERENCE = False
-HOLOPIX = False
+HOLOPIX = True
 
 if PAD_INFERENCE:
     post_fix = "_pad"
@@ -35,6 +35,8 @@ if HOLOPIX:
     model_name = "holopix"
 else:
     model_name = "kitti"
+
+post_fix = "_no_pt_10k"
 
 
 def parse_args():
@@ -187,7 +189,7 @@ def test_simple(args):
             disp_resized_np = disp_resized.squeeze().cpu().numpy()
             vmax = np.percentile(disp_resized_np, 95)
             normalizer = mpl.colors.Normalize(vmin=disp_resized_np.min(), vmax=vmax)
-            mapper = cm.ScalarMappable(norm=normalizer, cmap='magma')
+            mapper = cm.ScalarMappable(norm=normalizer, cmap='Greys')
             colormapped_im = (mapper.to_rgba(disp_resized_np)[:, :, :3] * 255).astype(np.uint8)
             im = pil.fromarray(colormapped_im)
 
