@@ -49,6 +49,12 @@ def load_pfm(pfm_file_path):
 
     return img
 
+def normalize_disparity(disp):
+    min_dp = np.amin(disp)
+    max_dp = np.amax(disp)
+
+    return (disp - min_dp) / (max_dp - min_dp) + 0.01 # Assume 0.01 to be the minimum disp
+
 
 def compute_errors(gt, pred):
     rmse = (gt - pred) ** 2
@@ -73,9 +79,9 @@ def calculate_error(pred, gt, confidence_mask):
     gt = gt[value_mask]
     pred = pred[value_mask]
 
-    # print(gt.shape)
-    # print(pred.shape)
-    # assert False
+    # min, max normalization
+    pred = normalize_disparity(pred)
+
     pred *= np.median(gt) / np.median(pred)
     errors = compute_errors(gt, pred)
 
@@ -85,7 +91,7 @@ mask_dir = "/home/owenhua/Devel/monodepth2/middlebury/left-masks"
 assert_dir = "/home/owenhua/Devel/monodepth2/middlebury/left-images/"
 gt_dir = "/home/owenhua/Devel/monodepth2/middlebury/left-depths"
 
-pred_paths = sorted(glob.glob(assert_dir + '/*_holopix_no_flip.npy'))
+pred_paths = sorted(glob.glob(assert_dir + '/*holopix_no_pt_full.npy'))
 mask_paths = sorted(glob.glob(mask_dir + '/*'))
 gt_paths = sorted(glob.glob(gt_dir + '/*'))
 

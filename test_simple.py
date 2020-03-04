@@ -36,7 +36,7 @@ if HOLOPIX:
 else:
     model_name = "kitti"
 
-post_fix = "_no_flip"
+post_fix = "_projection_23"
 
 
 def parse_args():
@@ -189,7 +189,7 @@ def test_simple(args):
             disp_resized_np = disp_resized.squeeze().cpu().numpy()
             vmax = np.percentile(disp_resized_np, 95)
             normalizer = mpl.colors.Normalize(vmin=disp_resized_np.min(), vmax=vmax)
-            mapper = cm.ScalarMappable(norm=normalizer, cmap='Greys')
+            mapper = cm.ScalarMappable(norm=normalizer, cmap='gray')
             colormapped_im = (mapper.to_rgba(disp_resized_np)[:, :, :3] * 255).astype(np.uint8)
             im = pil.fromarray(colormapped_im)
 

@@ -121,8 +121,8 @@ class Trainer:
 
         fpath = os.path.join("/home/owenhua/dataset/Leia-Holopix-Stereo-Dataset", "holopix70k_positive_{}_id.txt")
 
-        train_ids = readlines(fpath.format("train"))[:5000]
-        val_ids = readlines(fpath.format("val"))[:500]
+        train_ids = readlines(fpath.format("train"))[9:10]
+        val_ids = readlines(fpath.format("val"))[:100]
         img_ext = '.png' if self.opt.png else '.jpg'
 
         num_train_samples = len(train_ids)
@@ -400,7 +400,7 @@ class Trainer:
                     disp, [self.opt.height, self.opt.width], mode="bilinear", align_corners=False)
                 source_scale = 0
 
-            scaled_disparity, depth = disp_to_depth(disp, self.opt.min_depth, self.opt.max_depth)
+            _, depth = disp_to_depth(disp, self.opt.min_depth, self.opt.max_depth)
 
             # # Retrieve scaled_disparity
             # for i in range(scaled_disparity.size()[0]):
@@ -408,49 +408,54 @@ class Trainer:
             #     sd_numpy = np.transpose(sd_numpy, (1, 2, 0))
             #     np.save("./outputs/sd/%s_sd.npy"%i, sd_numpy)
 
-            # outputs[("scaled_disparity", 0, scale)] = scaled_disparity
+            outputs[("depth", 0, scale)] = depth
 
             for i, frame_id in enumerate(self.opt.frame_ids[1:]):
 
-                # if frame_id == "s":
-                #     T = inputs["stereo_T"]
-                # else:
-                #     T = outputs[("cam_T_cam", 0, frame_id)]
+                if frame_id == "s":
+                    T = inputs["stereo_T"]
+                else:
+                    T = outputs[("cam_T_cam", 0, frame_id)]
 
                 # from the authors of https://arxiv.org/abs/1712.00175
-                # if self.opt.pose_model_type == "posecnn":
+                if self.opt.pose_model_type == "posecnn":
 
-                #     axisangle = outputs[("axisangle", 0, frame_id)]
-                #     translation = outputs[("translation", 0, frame_id)]
+                    axisangle = outputs[("axisangle", 0, frame_id)]
+                    translation = outputs[("translation", 0, frame_id)]
 
-                #     inv_depth = 1 / depth
-                #     mean_inv_depth = inv_depth.mean(3, True).mean(2, True)
+                    inv_depth = 1 / depth
+                    mean_inv_depth = inv_depth.mean(3, True).mean(2, True)
 
-                #     T = transformation_from_parameters(
-                #         axisangle[:, 0], translation[:, 0] * mean_inv_depth[:, 0], frame_id < 0)
+                    T = transformation_from_parameters(
+                        axisangle[:, 0], translation[:, 0] * mean_inv_depth[:, 0], frame_id < 0)
 
-                # cam_points = self.backproject_depth[source_scale](
-                #     depth, inputs[("inv_K", source_scale)])
-                # pix_coords = self.project_3d[source_scale](
-                #     cam_points, inputs[("K", source_scale)], T)
+                cam_points = self.backproject_depth[source_scale](
+                    depth, inputs[("inv_K", source_scale)])
+                pix_coords = self.project_3d[source_scale](
+                    cam_points, inputs[("K", source_scale)], T)
 
-                # outputs[("sample", frame_id, scale)] = pix_coords
-
-                batch_pixel_coords = self.get_batch_pixel_coords(self.opt.height, self.opt.width, self.opt.batch_size).cuda()
-
-
-                # apply disparity on a per pixel basis only on the X - axis
-                # since there is no vertical disparity
-                X = batch_pixel_coords[:, 0, :] + scaled_disparity.flatten(start_dim=1) * 0.1
-                Y = batch_pixel_coords[:, 1, :]
-
-                pixel_coords = torch.stack([X, Y], dim=2)  # [B, H*W, 2]
-                pixel_coords = pixel_coords.view(self.opt.batch_size, self.opt.height, self.opt.width, 2)  # [B, H, W, 2]
+                outputs[("sample", frame_id, scale)] = pix_coords
 
                 outputs[("color", frame_id, scale)] = F.grid_sample(
                     inputs[("color", frame_id, source_scale)],
-                    pixel_coords,
+                    outputs[("sample", frame_id, scale)],
                     padding_mode="border")
+
+                # batch_pixel_coords = self.get_batch_pixel_coords(self.opt.height, self.opt.width, self.opt.batch_size).cuda()
+
+
+                # # apply disparity on a per pixel basis only on the X - axis
+                # # since there is no vertical disparity
+                # X = batch_pixel_coords[:, 0, :] + scaled_disparity.flatten(start_dim=1) * 0.1
+                # Y = batch_pixel_coords[:, 1, :]
+
+                # pixel_coords = torch.stack([X, Y], dim=2)  # [B, H*W, 2]
+                # pixel_coords = pixel_coords.view(self.opt.batch_size, self.opt.height, self.opt.width, 2)  # [B, H, W, 2]
+
+                # outputs[("color", frame_id, scale)] = F.grid_sample(
+                #     inputs[("color", frame_id, source_scale)],
+                #     pixel_coords,
+                #     padding_mode="border")
 
                 # # Retrieve pred images
                 # pred = outputs[("color", frame_id, scale)]

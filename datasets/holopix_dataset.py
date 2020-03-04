@@ -1,5 +1,6 @@
 import os
 import PIL.Image as pil
+import numpy as np
 
 from .mono_dataset import MonoDataset
 
@@ -10,7 +11,10 @@ class HolopixDataset(MonoDataset):
     def __init__(self, *args, **kwargs):
         super(HolopixDataset, self).__init__(*args, **kwargs)
         # These attributes not useful to Holopix Dataset
-        self.K = None
+        self.K = np.array([[1, 0, 0, 0],
+                           [0, 1, 0, 0],
+                           [0, 0, 1, 0],
+                           [0, 0, 0, 1]], dtype=np.float32)
         self.full_res_shape = None
         self.side_map = None
 

@@ -141,9 +141,9 @@ class MonoDataset(data.Dataset):
         """
         inputs = {}
 
-        do_color_aug = self.is_train and random.random() > 0.5
+        # do_color_aug = self.is_train and random.random() > 0.5
         # do_flip = self.is_train and random.random() > 0.5
-        # do_color_aug = False
+        do_color_aug = False
         do_flip = False
 
         img_id = self.img_ids[index]
@@ -165,18 +165,18 @@ class MonoDataset(data.Dataset):
                 img_name = img_id + '_%s.jpg'%tag_0
                 inputs[("color", i, -1)] = self.get_color(folder, img_name, do_flip)
 
-        # We do not need K for Holopix Dataset
-        # # adjusting intrinsics to match each scale in the pyramid
-        # for scale in range(self.num_scales):
-        #     K = self.K.copy()
+        # adjusting intrinsics to match each scale in the pyramid
+        for scale in range(self.num_scales):
+            K = self.K.copy()
 
-        #     K[0, :] *= self.width // (2 ** scale)
-        #     K[1, :] *= self.height // (2 ** scale)
+            # We assume our dataset has been calibrated
+            # K[0, :] *= self.width // (2 ** scale)
+            # K[1, :] *= self.height // (2 ** scale)
 
-        #     inv_K = np.linalg.pinv(K)
+            inv_K = np.linalg.pinv(K)
 
-        #     inputs[("K", scale)] = torch.from_numpy(K)
-        #     inputs[("inv_K", scale)] = torch.from_numpy(inv_K)
+            inputs[("K", scale)] = torch.from_numpy(K)
+            inputs[("inv_K", scale)] = torch.from_numpy(inv_K)
 
         if do_color_aug:
             color_aug = transforms.ColorJitter.get_params(
@@ -195,14 +195,14 @@ class MonoDataset(data.Dataset):
             inputs["depth_gt"] = np.expand_dims(depth_gt, 0)
             inputs["depth_gt"] = torch.from_numpy(inputs["depth_gt"].astype(np.float32))
 
-        # We do not need T for Holopix Dataset
-        # if "s" in self.frame_idxs:
-        #     stereo_T = np.eye(4, dtype=np.float32)
-        #     baseline_sign = -1 if do_flip else 1
-        #     side_sign = -1 if side == "l" else 1
-        #     stereo_T[0, 3] = side_sign * baseline_sign * 0.1
+        if "s" in self.frame_idxs:
+            stereo_T = np.eye(4, dtype=np.float32)
+            baseline_sign = -1 if do_flip else 1
+            # side_sign = -1 if side == "l" else 1
+            side_sign = 1
+            stereo_T[0, 3] = side_sign * baseline_sign * 0.01
 
-        #     inputs["stereo_T"] = torch.from_numpy(stereo_T)
+            inputs["stereo_T"] = torch.from_numpy(stereo_T)
 
         return inputs
 
