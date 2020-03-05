@@ -18,8 +18,8 @@ def disp_to_depth(disp, min_depth, max_depth):
     The formula for this conversion is given in the 'additional considerations'
     section of the paper.
     """
-    scaled_disp = disp * 2 - 1
-    return scaled_disp, 0
+    # scaled_disp = disp * 2 - 1
+    return disp, 0
 
 
 def transformation_from_parameters(axisangle, translation, invert=False):

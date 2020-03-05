@@ -121,7 +121,7 @@ class Trainer:
 
         fpath = os.path.join("/home/owenhua/dataset/Leia-Holopix-Stereo-Dataset", "holopix70k_positive_{}_id.txt")
 
-        train_ids = readlines(fpath.format("train"))[:5000]
+        train_ids = readlines(fpath.format("train"))[10:11]
         val_ids = readlines(fpath.format("val"))[:500]
         img_ext = '.png' if self.opt.png else '.jpg'
 
@@ -441,7 +441,7 @@ class Trainer:
 
                 # apply disparity on a per pixel basis only on the X - axis
                 # since there is no vertical disparity
-                X = batch_pixel_coords[:, 0, :] + scaled_disparity.flatten(start_dim=1) * 0.1
+                X = batch_pixel_coords[:, 0, :] - scaled_disparity.flatten(start_dim=1) * 0.2
                 Y = batch_pixel_coords[:, 1, :]
 
                 pixel_coords = torch.stack([X, Y], dim=2)  # [B, H*W, 2]

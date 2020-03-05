@@ -95,15 +95,12 @@ class MonoDataset(data.Dataset):
         images in this item. This ensures that all images input to the pose network receive the
         same augmentation.
         """
-        # The model requires integer multiples of 32
-        center_crop = transforms.CenterCrop((352, 640))
         for k in list(inputs):
             frame = inputs[k]
             if "color" in k:
                 n, im, i = k
                 for i in range(self.num_scales):
-                    inputs[(n, im, i)] = center_crop(inputs[(n, im, i - 1)])
-                    inputs[(n, im, i)] = self.resize[i](inputs[(n, im, i)])
+                    inputs[(n, im, i)] = self.resize[i](inputs[(n, im, i - 1)])
 
         for k in list(inputs):
             f = inputs[k]
@@ -147,6 +144,8 @@ class MonoDataset(data.Dataset):
         do_flip = False
 
         img_id = self.img_ids[index]
+        left_reconvergence_crop = (0, 4, 608, 356)
+        right_reconvergence_crop = (32, 4, 640, 356)
         for i in self.frame_idxs:
             tag_s = "right"
             tag_0 = "left"
@@ -157,13 +156,23 @@ class MonoDataset(data.Dataset):
                 # folder = os.path.join(self.data_path, "resized-" + tag_s + "-images")
                 folder = os.path.join(self.data_path, tag_s)
                 img_name = img_id + '_%s.jpg' % tag_s
-                inputs[("color", i, -1)] = self.get_color(folder, img_name, do_flip)
+                img = self.get_color(folder, img_name, do_flip)
+                # Assume Holopix images are 360p
+                img.resize((640, 360))
+                # Crop to reconverge
+                img = img.crop(right_reconvergence_crop)
+                inputs[("color", i, -1)] = img
             else:
                 # Load the left image
                 # folder = os.path.join(self.data_path, "resized-" + tag_0 + "-images")
                 folder = os.path.join(self.data_path, tag_0)
                 img_name = img_id + '_%s.jpg'%tag_0
-                inputs[("color", i, -1)] = self.get_color(folder, img_name, do_flip)
+                img = self.get_color(folder, img_name, do_flip)
+                # Assume Holopix images are 360p
+                img.resize((640, 360))
+                # Crop to reconverge
+                img = img.crop(left_reconvergence_crop)
+                inputs[("color", i, -1)] = img
 
         # We do not need K for Holopix Dataset
         # # adjusting intrinsics to match each scale in the pyramid
