@@ -121,8 +121,8 @@ class Trainer:
 
         fpath = os.path.join("/home/owenhua/dataset/Leia-Holopix-Stereo-Dataset", "holopix70k_positive_{}_id.txt")
 
-        train_ids = readlines(fpath.format("train"))[10:11]
-        val_ids = readlines(fpath.format("val"))[:500]
+        train_ids = readlines(fpath.format("train"))
+        val_ids = readlines(fpath.format("val"))
         img_ext = '.png' if self.opt.png else '.jpg'
 
         num_train_samples = len(train_ids)
