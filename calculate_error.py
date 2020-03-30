@@ -79,8 +79,8 @@ def calculate_error(pred, gt, confidence_mask):
     gt = gt[value_mask]
     pred = pred[value_mask]
 
-    # min, max normalization
-    pred = normalize_disparity(pred)
+    # # min, max normalization
+    # pred = normalize_disparity(pred)
 
     pred *= np.median(gt) / np.median(pred)
     errors = compute_errors(gt, pred)
@@ -91,36 +91,23 @@ mask_dir = "/home/owenhua/Devel/monodepth2/middlebury/left-masks"
 assert_dir = "/home/owenhua/Devel/monodepth2/middlebury/left-images/"
 gt_dir = "/home/owenhua/Devel/monodepth2/middlebury/left-depths"
 
-pred_paths = sorted(glob.glob(assert_dir + '/*holopix_no_pt_full.npy'))
-mask_paths = sorted(glob.glob(mask_dir + '/*'))
-gt_paths = sorted(glob.glob(gt_dir + '/*'))
+for item in ['holopix_1k', 'holopix_5k', 'holopix_10k', 'holopix']:
+    pred_paths = sorted(glob.glob(assert_dir + '/*disp_%s.npy'%item))
+    mask_paths = sorted(glob.glob(mask_dir + '/*'))
+    gt_paths = sorted(glob.glob(gt_dir + '/*'))
 
-e1_list, e2_list, e3_list, e4_list = [], [], [], []
+    e1_list, e2_list, e3_list, e4_list = [], [], [], []
 
-for id in range(len(pred_paths)):
+    for id in range(len(pred_paths)):
 
-    # print(pred_paths[id])
-    # print(mask_paths[id])
-    # print(gt_paths[id])
+        pred = load_numpy(pred_paths[id])
+        mask = load_mask(mask_paths[id])
+        gt = load_pfm(gt_paths[id])
 
-    pred = load_numpy(pred_paths[id])
-    mask = load_mask(mask_paths[id])
-    gt = load_pfm(gt_paths[id])
+        e1, e2, e3, e4 = calculate_error(pred, gt, mask)
+        e1_list.append(e1)
+        e2_list.append(e2)
+        e3_list.append(e3)
+        e4_list.append(e4)
 
-    e1, e2, e3, e4 = calculate_error(pred, gt, mask)
-    e1_list.append(e1)
-    e2_list.append(e2)
-    e3_list.append(e3)
-    e4_list.append(e4)
-
-print(np.mean(np.array(e1_list)))
-print(np.mean(np.array(e2_list)))
-print(np.mean(np.array(e3_list)))
-print(np.mean(np.array(e4_list)))
-
-# colored_portion = cv2.bitwise_or(disp, disp, mask = mask)
-
-
-# cv2.imshow('img', colored_portion)
-# cv2.waitKey(0)
-# cv2.destroyAllWindows()
+    print(item, 'abs_rel', np.mean(np.array(e1_list)), 'sq_rel', np.mean(np.array(e2_list)), 'rmse', np.mean(np.array(e3_list)), 'rmse_log', np.mean(np.array(e4_list)))

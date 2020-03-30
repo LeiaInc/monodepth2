@@ -24,7 +24,7 @@ from layers import disp_to_depth
 from utils import download_model_if_doesnt_exist
 
 PAD_INFERENCE = False
-HOLOPIX = True
+HOLOPIX = False
 
 if PAD_INFERENCE:
     post_fix = "_pad"
@@ -36,7 +36,7 @@ if HOLOPIX:
 else:
     model_name = "kitti"
 
-post_fix = "_projection_23"
+post_fix = ""
 
 
 def parse_args():
